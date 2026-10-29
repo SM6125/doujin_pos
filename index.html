@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="ja">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+        <meta name="theme-color" content="#172554" />
+        <title>イベントPOS</title>
+        <link rel="stylesheet" href="styles.css" />
+    </head>
+    <body>
+        <header class="topbar">
+            <div>
+                <h1 id="boothTitle">ブース名未設定</h1>
+            </div>
+            <div class="header-actions">
+                <span id="storageStatus" class="status-pill">正常</span>
+            </div>
+        </header>
+
+        <nav class="tabs" aria-label="メインメニュー">
+            <button class="tab active" data-page="pos">使用画面</button>
+            <button class="tab" data-page="records">記録閲覧</button>
+            <button class="tab" data-page="settings">設定</button>
+        </nav>
+
+        <main>
+            <section id="page-pos" class="page active">
+                <div class="section-heading">
+                    <div>
+                        <p class="eyebrow">CHECKOUT</p>
+                        <h2>商品を選択</h2>
+                    </div>
+                    <div class="summary-chip"><span>商品点数</span><strong id="itemCount">0</strong></div>
+                </div>
+                <div id="productGrid" class="product-grid"></div>
+                <div id="emptyProducts" class="empty-state hidden">商品が登録されていません。設定画面から商品を追加してください。</div>
+                <div class="checkout-bar">
+                    <div class="total-block"><span>合計金額</span><strong id="cartTotal">¥0</strong></div>
+                    <button id="checkoutOpen" class="button primary large" disabled>決定して会計へ</button>
+                </div>
+            </section>
+
+            <section id="page-records" class="page">
+                <div class="section-heading">
+                    <div>
+                        <p class="eyebrow">SALES</p>
+                        <h2>取引記録</h2>
+                    </div>
+                    <button id="exportCsv" class="button primary">CSVを出力</button>
+                </div>
+                <div class="record-meta">
+                    <span id="recordCount">0件</span>
+                    <span id="csvStatus">CSV未出力</span>
+                </div>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>点数</th>
+                                <th>価格</th>
+                                <th>預り</th>
+                                <th>釣銭</th>
+                            </tr>
+                        </thead>
+                        <tbody id="recordsBody"></tbody>
+                    </table>
+                </div>
+                <p class="hint">行を選択して詳細を確認</p>
+                <div id="emptyRecords" class="empty-state hidden">売上記録なし</div>
+            </section>
+
+            <section id="page-settings" class="page">
+                <div class="section-heading">
+                    <div>
+                        <p class="eyebrow">CONFIG</p>
+                        <h2>設定</h2>
+                    </div>
+                </div>
+                <div class="panel">
+                    <h3>ブース設定</h3>
+                    <form id="boothForm" class="inline-form">
+                        <label class="field grow">ブース名<input id="boothNameInput" required autocomplete="off" placeholder="ブース名を設定してください" /></label>
+                        <button class="button primary" type="submit">保存</button>
+                    </form>
+                </div>
+                <div class="panel">
+                    <div class="panel-heading">
+                        <div>
+                            <h3>商品リスト</h3>
+                            <p class="muted">ドラッグ不要で上下に並べ替えできます。</p>
+                        </div>
+                        <button id="addProductOpen" class="button primary">商品を追加</button>
+                    </div>
+                    <div id="settingsProducts" class="settings-products"></div>
+                    <div id="emptySettingsProducts" class="empty-state hidden">商品はまだありません。</div>
+                </div>
+                <div class="panel">
+                    <h3>売上データのリセット</h3>
+                    <p class="muted">売上記録を削除します。商品設定とブース名は保持されます。在庫数は削除されず、CSV出力だけでは復元できません。</p>
+                    <div class="reset-status-row"><span>最新CSVの状態</span><strong id="resetCsvStatus">未出力</strong></div>
+                    <button id="resetOpen" class="button danger">売上記録をリセット</button>
+                </div>
+                <p class="footnote">データは閲覧履歴の削除などで失われます。定期的にCSVを保存してください。</p>
+            </section>
+        </main>
+
+        <dialog id="checkoutDialog" class="modal">
+            <div class="modal-head">
+                <div>
+                    <p class="eyebrow">PAYMENT</p>
+                    <h2 id="checkoutTitle">会計確認</h2>
+                </div>
+                <button class="icon-button" data-close="checkoutDialog" aria-label="閉じる">×</button>
+            </div>
+            <div id="paymentEntry">
+                <div id="checkoutLines" class="checkout-lines"></div>
+                <div class="amount-card"><span>合計金額</span><strong id="modalTotal">¥0</strong></div>
+                <label class="field">預り金額を入力<input id="tenderedInput" type="number" inputmode="numeric" min="0" step="1" placeholder="預り金額を入力" /></label>
+                <p id="paymentError" class="error-text" role="alert"></p>
+                <button id="payNow" class="button primary full large">会計する</button>
+            </div>
+            <div id="paymentDone" class="hidden">
+                <div class="receipt-summary">
+                    <div><span>合計金額</span><strong id="doneTotal">¥0</strong></div>
+                    <div><span>預り</span><strong id="doneTendered">¥0</strong></div>
+                    <div class="change"><span>お釣り</span><strong id="doneChange">¥0</strong></div>
+                </div>
+                <p class="success-note">取引を記録しました。</p>
+                <button id="finishCheckout" class="button primary full large">完了</button>
+            </div>
+        </dialog>
+
+        <dialog id="transactionDialog" class="modal">
+            <div class="modal-head">
+                <div>
+                    <p class="eyebrow">TRANSACTION DETAIL</p>
+                    <h2 id="transactionTitle">取引明細</h2>
+                </div>
+                <button class="icon-button" data-close="transactionDialog" aria-label="閉じる">×</button>
+            </div>
+            <div id="transactionDetail"></div>
+        </dialog>
+
+        <dialog id="productDialog" class="modal">
+            <div class="modal-head">
+                <div>
+                    <p class="eyebrow">PRODUCT</p>
+                    <h2 id="productDialogTitle">商品を追加</h2>
+                </div>
+                <button class="icon-button" data-close="productDialog" aria-label="閉じる">×</button>
+            </div>
+            <form id="productForm" class="form-stack">
+                <input id="productIdInput" type="hidden" />
+                <label class="field">品名<input id="productNameInput" required maxlength="100" autocomplete="off" placeholder="商品名" /></label>
+                <label class="field">価格<input id="productPriceInput" type="number" required min="0" step="1" inputmode="numeric" value="0" /></label>
+                <label class="field">入庫数<input id="productStockInInput" type="number" required min="0" step="1" inputmode="numeric" value="0" /></label>
+                <label class="field">現在在庫数<input id="productStockNowInput" type="number" required min="0" step="1" inputmode="numeric" value="0" /></label>
+                <p class="hint">入庫数は累計入庫数、現在在庫数は販売可能な在庫数です。会計時に現在在庫数のみが減ります。</p>
+                <p id="productError" class="error-text" role="alert"></p>
+                <button class="button primary full large" type="submit">保存</button>
+            </form>
+        </dialog>
+
+        <dialog id="resetDialog" class="modal">
+            <div class="modal-head">
+                <div>
+                    <p class="eyebrow">DANGER ZONE</p>
+                    <h2>売上記録のリセット</h2>
+                </div>
+                <button class="icon-button" data-close="resetDialog" aria-label="閉じる">×</button>
+            </div>
+            <div id="resetBlocked" class="hidden">
+                <p class="warning-box">最新の売上記録がCSV出力されていないため、リセットできません。</p>
+                <p class="muted">先に「記録閲覧」画面からCSVを出力し、ファイルが端末に保存されたことを確認してください。</p>
+                <button id="goExport" class="button primary full">記録閲覧へ移動</button>
+            </div>
+            <div id="resetConfirm">
+                <p>売上記録 <strong id="resetRecordCount">0件</strong> を削除します。この操作は取り消せません。</p>
+                <p class="warning-box">ブース名・商品リスト・在庫数は保持されます。</p>
+                <label class="check-line"><input id="resetAcknowledge" type="checkbox" /> 売上記録を削除することを理解しました</label>
+                <button id="resetConfirmButton" class="button danger full" disabled>売上記録を削除する</button>
+            </div>
+        </dialog>
+
+        <div id="toast" class="toast" role="status" aria-live="polite"></div>
+        <script src="app.js"></script>
+    </body>
+</html>
